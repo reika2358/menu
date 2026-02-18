@@ -160,8 +160,27 @@ def generate_menu():
             logger.info("Gemini APIにリクエストを送信しています...")
             response = model.generate_content([prompt, image])
             
-            if not response or not response.text:
-                logger.error("Gemini APIからの応答が空です")
+            # レスポンスの検証
+            if not response:
+                logger.error("Gemini APIからの応答がNoneです")
+                return jsonify({'error': '献立の生成に失敗しました。もう一度お試しください。'}), 500
+            
+            # テキストを安全に取得
+            try:
+                menu_text = response.text
+            except AttributeError:
+                # response.textが存在しない場合、partsから取得を試みる
+                try:
+                    if hasattr(response, 'parts') and response.parts:
+                        menu_text = ''.join([part.text for part in response.parts if hasattr(part, 'text')])
+                    else:
+                        menu_text = str(response)
+                except Exception as e:
+                    logger.error(f"レスポンスからテキストを取得できませんでした: {str(e)}")
+                    return jsonify({'error': '献立の生成に失敗しました。もう一度お試しください。'}), 500
+            
+            if not menu_text or len(menu_text.strip()) == 0:
+                logger.error("Gemini APIからの応答テキストが空です")
                 return jsonify({'error': '献立の生成に失敗しました。もう一度お試しください。'}), 500
             
             elapsed_time = (datetime.now() - start_time).total_seconds()
@@ -169,11 +188,25 @@ def generate_menu():
             
             return jsonify({
                 'success': True,
-                'menu': response.text
+                'menu': menu_text
             })
-        except Exception as e:
-            logger.error(f"Gemini API呼び出しエラー: {str(e)}\n{traceback.format_exc()}")
+        except ValueError as e:
+            # APIキーの形式エラーなど
+            error_msg = str(e)
+            logger.error(f"Gemini API呼び出しエラー（値エラー）: {error_msg}\n{traceback.format_exc()}")
+            if "pattern" in error_msg.lower() or "string" in error_msg.lower():
+                return jsonify({'error': 'APIキーの形式が正しくありません。設定を確認してください。'}), 500
             return jsonify({'error': 'AIによる献立生成中にエラーが発生しました。しばらく時間をおいてから再度お試しください。'}), 500
+        except Exception as e:
+            error_msg = str(e)
+            logger.error(f"Gemini API呼び出しエラー: {error_msg}\n{traceback.format_exc()}")
+            # より詳細なエラーメッセージを返す
+            if "API key" in error_msg or "authentication" in error_msg.lower():
+                return jsonify({'error': 'APIキーが無効です。環境変数を確認してください。'}), 500
+            elif "quota" in error_msg.lower() or "limit" in error_msg.lower():
+                return jsonify({'error': 'APIの利用制限に達しました。しばらく時間をおいてから再度お試しください。'}), 500
+            else:
+                return jsonify({'error': f'AIによる献立生成中にエラーが発生しました: {error_msg[:100]}'}), 500
     
     except Exception as e:
         logger.error(f"予期しないエラー: {str(e)}\n{traceback.format_exc()}")
