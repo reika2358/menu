@@ -141,13 +141,22 @@ ngrok http 8080
 
 ngrokが生成したURL（例：`https://xxxx.ngrok.io`）を他の人に共有できます。
 
-### 方法3: Railway（無料枠あり）
+### 方法3: Railway（無料枠あり・推奨）
+
+**Renderの無料プランはメモリ制限（512MB）が厳しいため、Railwayを推奨します。**
+
+詳細な手順は `RAILWAY_DEPLOY.md` を参照してください。
 
 1. [Railway](https://railway.app) にアクセス
 2. 「New Project」→「Deploy from GitHub repo」
-3. リポジトリを選択
+3. リポジトリ `reika2358/menu` を選択
 4. 環境変数 `GEMINI_API_KEY` を設定
 5. 自動デプロイ完了
+
+**Railwayのメリット:**
+- メモリ制限が緩い（Renderより多くのメモリが使える）
+- スリープしない（常時起動可能）
+- 無料枠あり（500時間/月）
 
 ## 📄 ライセンス
 
